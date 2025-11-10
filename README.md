@@ -1,2 +1,2 @@
 # multilineair-multiplication-
-Wetenschappelijke vormen 
+Wetenschappelijke vorming
