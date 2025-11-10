@@ -1,5 +1,13 @@
 using LinearAlgebra
 using TensorToolbox
+"""
+Function to decide to optimale order of ttm, for theory, see Proposition 3.25 (Multi-TTM Ordering, Fackler, 2019) 
+Input : X::AbstractArray, Our representation of a tensor
+        matrices::MatrixCell , a list of matrices, represented using MatrixCell, which Lana Perisa also used
+Output: Y, β ; these are temporary just to test the implemtation
+        order , the result given by the formula
+
+"""
 function multi_ttm_optimal(X::AbstractArray, matrices::MatrixCell)
     ns = size(X)
     ms = [size(U, 1) for U in matrices]

@@ -2,6 +2,6 @@ using TensorToolbox
 using Test
 using BenchmarkTools
 
-function ttm()
+function matten(A::MatrixCell)
 
 end
