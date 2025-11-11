@@ -1,32 +1,30 @@
 using TensorToolbox
 using LinearAlgebra
+
+include("tensor.jl")
+
 """
 Input: X is a tensor
     A contains the matrices to multiply with
-    modes contains the modes to multiply along
 Output : 
 """
-function NaiveMultiplication(X::AbstractArray,A::MatrixCell)
-        sz = size(X)
-        for i in 1:length(A)
-            X_unfolded = unfold(X, i)
-            X_multiplied = A[i] * X_unfolded
-            sz[A[i]] = size(A[i], 1)
-            X = matten(X_multiplied, i, sz)
-        end
-        return X
+function NaiveMultiplication(X::AbstractArray, A::MatrixCell)
+    N = ndims(X)
+    #@assert length(A) == N
+
+    for i in 1:N
+        #@assert size(A[i], 2) == size(X, i) "A[$i] has incompatible dimensions"
+        Xmat = tenmat(X, i)
+        Xmat = A[i] * Xmat
+        sz = collect(size(X))
+        sz[i] = size(A[i], 1)
+        X = matten(Xmat, i, sz)
+    end
+    return X
 end
 
-#Test
-X = rand(3,4,5)
-A = MatrixCell([
-    rand(5,3),   # for mode 1
-    rand(4,4),   # for mode 2
-    rand(3,5)    # for mode 3
-])
-Y_naive = naive_multiplication(X,A);
-println(size(Y_naive))  # Expected output: (2, 2, 2, 2)
+# Test
+# X = randn(4, 5, 6)
+# A = MatrixCell([randn(3,4), randn(7,5), randn(2,6)])
 
-function fold()
-
-end
+# Y = naive_ttm(X, A)
