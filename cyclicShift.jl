@@ -21,7 +21,7 @@ function CyclicShiftMultiplication(X::AbstractArray,A::MatrixCell)
     for i in 1:d#overlopen dimensies
         B = reshape(permutedims(X, (i, setdiff(1:d, i)...)), size(X, i), :)
         B = A[i] * B
-        newdims = (size(Ulist[i], 1), size(X)[setdiff(1:d, i)]...)
+        newdims = (size(A[i], 1), size(X)[setdiff(1:d, i)]...)
         X = permutedims(reshape(A, newdims), invperm((i, setdiff(1:d, i)...)))
     end
     return X
