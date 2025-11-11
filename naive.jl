@@ -1,19 +1,20 @@
 using TensorToolbox
 using LinearAlgebra
-
-#X is a tensor
-#A contains the matrices to multiply with
-#modes contains the modes to multiply along
-
-function naive_multiplication(X::AbstractArray,A::MatrixCell)
-    sz = size(X)
-    for i in 1:length(A)
-        X_unfolded = tenmat(X, i)
-        X_multiplied = A[i] * X_unfolded
-        sz[A[i]] = size(A[i], 1)
-        X = matten(X_multiplied, i, sz)
-    end
-    return X
+"""
+Input: X is a tensor
+    A contains the matrices to multiply with
+    modes contains the modes to multiply along
+Output : 
+"""
+function NaiveMultiplication(X::AbstractArray,A::MatrixCell)
+        sz = size(X)
+        for i in 1:length(A)
+            X_unfolded = unfold(X, i)
+            X_multiplied = A[i] * X_unfolded
+            sz[A[i]] = size(A[i], 1)
+            X = matten(X_multiplied, i, sz)
+        end
+        return X
 end
 
 #Test

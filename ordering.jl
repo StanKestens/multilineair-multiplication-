@@ -8,7 +8,7 @@ Output: Y, β ; these are temporary just to test the implemtation
         order , the result given by the formula
 
 """
-function multi_ttm_optimal(X::AbstractArray, matrices::MatrixCell)
+function OptimalOrdering(X::AbstractArray, matrices::MatrixCell)
     ns = size(X)
     ms = [size(U, 1) for U in matrices]
     β = [1/ns[k] - 1/ms[k] for k in 1:length(matrices)]

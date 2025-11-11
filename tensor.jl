@@ -28,7 +28,7 @@ Output:
 
 """
 
-function folding(A::AbstractMatrix, n::Integer,dim::Vector{Int})
+function fold(A::AbstractMatrix, n::Integer,dim::Vector{Int})
   m = setdiff(1:length(dim), n)
   X = reshape(A,[dim[n];dim[m]]...)
   permutedims(X,invperm([n;m]))
