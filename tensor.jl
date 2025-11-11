@@ -15,3 +15,20 @@ function unfold(X::AbstractArray, n::Integer)
     Xp = permutedims(X, perm)
     reshape(Xp, sz[n], :)
 end
+
+"""
+Function to fold an matrix into a tensor
+Input:
+    A - The matrix
+    dim - vector with the dimensions of the final tensor
+    n-mode in which were folding
+Output:
+    X - Tensor , the fold of A
+
+"""
+
+function matten(A::AbstractMatrix, n::Integer,dim::Vector{Int})
+  m = setdiff(1:length(dim), n)
+  X = reshape(A,[dim[n];dim[m]]...)
+  permutedims(X,invperm([n;m]))
+end
