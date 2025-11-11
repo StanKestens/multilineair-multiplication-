@@ -2,11 +2,12 @@ using TensorToolbox
 using Test
 using BenchmarkTools
 using LinearAlgebra
-
-# input: X: tensor (AbstractArray)
-#        mode: integer specifying the mode along which to unfold
-# output: unfolded tensor as a matrix in mode n
-
+"""
+Function to unfold a tensor into a matrix in mode-n 
+Input: X: tensor (AbstractArray)
+        mode: integer specifying the mode along which to unfold
+Output: unfolded tensor as a matrix in mode n
+"""
 function unfold(X::AbstractArray, n::Integer)
     N = ndims(X)
     sz = size(X)
