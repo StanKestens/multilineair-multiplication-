@@ -9,7 +9,7 @@ Input: X is a tensor
 Output : 
 """
 
-function NonNaiveMultiplication(X::AbstractArray, A::Vector{<:AbstractMatrix})
+function NonNaiveMultiplication(X::AbstractArray, A::MatrixCell)
     sz = size(X)
     order = OptimalOrdering(X,A)
     for i in order
