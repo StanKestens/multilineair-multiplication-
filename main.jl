@@ -18,21 +18,51 @@ end
 
 # parameters
 n = 5
-dims = 1:12
+dims = 1:5
 medians1 = Float64[]
 medians2 = Float64[]
+mem1 = Float64[]   # bytes
+mem2 = Float64[]   # bytes
+allocs1 = Int[]
+allocs2 = Int[]
 
 for d in dims
     X, A = make_case(n, d)
-    t1 = @benchmark NaiveMultiplication($X, $A)
+
+    t1 = @benchmark NaiveMultiplication($X, $A) #@time voor debuggen  run altijd minstens 2 keer want JIT
     t2 = @benchmark NonNaiveMultiplication($X, $A)
-    m1 = median(t1.times) / 1e6   # convert to milliseconds
+
+    m1 = median(t1.times) / 1e6   # ms
     m2 = median(t2.times) / 1e6
     push!(medians1, m1)
     push!(medians2, m2)
-    @printf "d = %d, median Naive = %.3f ms, median ordering = %.3f ms\n" d m1 m2
+
+    push!(mem1, t1.memory)        # bytes per evaluation
+    push!(mem2, t2.memory)
+    push!(allocs1, t1.allocs)
+    push!(allocs2, t2.allocs)
+
+    @printf "d = %d | time Naive = %.3f ms, ordering = %.3f ms | mem Naive = %.2f MB, ordering = %.2f MB | allocs Naive = %d, ordering = %d\n" d m1 m2 (t1.memory/1e6) (t2.memory/1e6) t1.allocs t2.allocs
 end
 
-#plot 
-plot(dims, mediansNaive, label="Naive Multiplication", xlabel="Tensor Order (d)", ylabel="Median Time (ms)", title="Performance Comparison of Multilinear Multiplication Methods", legend=:topleft)
-plot!(dims, mediansTTM, label="ordering Multiplication")
+# Plots: top = time, bottom = memory
+p_time = plot(
+    dims, medians1,
+    label = "Naive time",
+    xlabel = "Tensor Order (d)",
+    ylabel = "Median Time (ms)",
+    title = "Multilinear Multiplication: Time vs Memory",
+    legend = :topleft
+)
+plot!(p_time, dims, medians2, label = "Ordering time")
+
+p_mem = plot(
+    dims, mem1 ./ 1e6,
+    label = "Naive memory",
+    xlabel = "Tensor Order (d)",
+    ylabel = "Memory (MB)",
+    legend = :topleft
+)
+plot!(p_mem, dims, mem2 ./ 1e6, label = "Ordering memory")
+
+plot(p_time, p_mem, layout = (2, 1), size = (900, 700))

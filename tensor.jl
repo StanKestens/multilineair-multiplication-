@@ -13,7 +13,7 @@ function unfold(X::AbstractArray, n::Integer)
     sz = size(X)
     # Bring mode n to the first dimension, keep relative order of others
     perm = (n, (1:N)[(1:N) .!= n]...)
-    Xp = permutedims(X, perm)
+    Xp = permutedims(X, perm) ### permute dimensions is ass vermeid dit pls 
     reshape(Xp, sz[n], :)
 end
 

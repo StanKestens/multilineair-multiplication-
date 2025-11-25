@@ -12,6 +12,7 @@ Output :
 function NonNaiveMultiplication(X::AbstractArray, A::MatrixCell)
     sz = size(X)
     order = OptimalOrdering(X,A)
+    #eerst permute voor order
     for i in order
         X_unfolded = unfold(X, i)
         X_multiplied = A[i] * X_unfolded

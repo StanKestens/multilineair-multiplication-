@@ -8,13 +8,13 @@ Input: X is a tensor
     A contains the matrices to multiply with
 Output : 
 """
-function NaiveMultiplication(X::AbstractArray, A::MatrixCell)
+function NaiveMultiplication(X::AbstractArray, A::MatrixCell) # mode order als argument meegeven
     N = ndims(X)
     #@assert length(A) == N
 
     for i in 1:N
         #@assert size(A[i], 2) == size(X, i) "A[$i] has incompatible dimensions"
-        Xmat = tenmat(X, i)
+        Xmat = unfold(X, i)
         Xmat = A[i] * Xmat
         sz = collect(size(X))
         sz[i] = size(A[i], 1)
