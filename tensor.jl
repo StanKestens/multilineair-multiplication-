@@ -8,13 +8,16 @@ Input: X: tensor (AbstractArray)
         mode: integer specifying the mode along which to unfold
 Output: unfolded tensor as a matrix in mode n
 """
-function unfold(X::AbstractArray, n::Integer)
-    N = ndims(X)
-    sz = size(X)
-    # Bring mode n to the first dimension, keep relative order of others
-    perm = (n, (1:N)[(1:N) .!= n]...)
-    Xp = permutedims(X, perm)
-    reshape(Xp, sz[n], :)
+function unfold(X::AbstractArray, k::Integer)
+        dims = size(X)
+        X = reshape(X, size(X,1), :)  # mode-1 unfolding
+        for i in 2:k-1
+                X = transpose(X)
+                n_last = size(X, 2)
+                n_now = dims[i]
+                X = reshape(X, n_now, size(X,1) * n_last ÷ n_now)
+        end
+        return X
 end
 
 """
