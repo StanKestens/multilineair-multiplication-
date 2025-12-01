@@ -2,6 +2,7 @@ using TensorToolbox
 using LinearAlgebra
 
 include("tensor.jl")
+include("ordering.jl")
 
 """
 In this file we attempt to implement cyclic shifts, this is an alternative way to do multilineair multiplication, 
@@ -18,7 +19,8 @@ Output : X, the same tensor multiplied by each each matrix in A
 """
 
 function CyclicShiftMultiplication(X::AbstractArray,A::Vector{<:AbstractMatrix},M::Vector{Int} )
-    X = permutedims(X, M)
+    P = getPermutation(X, A,M)
+    X = permutedims(X, P)
     d = length(A)
     dims = size(X)
     #X = unfold(X, 1) -> not sure if this is needed because we are already saved this way (column major order), so i think we can just do :
@@ -34,5 +36,23 @@ function CyclicShiftMultiplication(X::AbstractArray,A::Vector{<:AbstractMatrix},
         X = reshape(X, div(size(X)[1],(a1*a2)), size(X)[2]*a1*a2)
     end
     X = reshape(X, final_dims...)
-    X = permutedims(X, invperm(M)) #get back to original indexation of the tensor
+    X = permutedims(X, invperm(P)) #get back to original indexation of the tensor
+    return X
 end 
+
+"""
+This function will decide the optimal way to calculate the cyclic shift based on :
+    Input:
+    -Tensor X 
+    -Vector of Matrices A 
+    -Modes of multiplication M
+    Output:
+    -Permutation P how we should permute our tensor so the cyclic shift works optimal
+
+    1ste versie : werkt enkel als |M| = order(A)
+"""
+
+function getPermutation(X::AbstractArray,A::Vector{<:AbstractMatrix},M::Vector{Int})
+    P = OptimalOrdering(X,M)
+    return P
+end
