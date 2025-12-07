@@ -1,6 +1,5 @@
 using TensorToolbox
 using Test
-using BenchmarkTools
 using LinearAlgebra
 """
 Function to unfold a tensor into a matrix in mode-n 
@@ -8,13 +7,16 @@ Input: X: tensor (AbstractArray)
         mode: integer specifying the mode along which to unfold
 Output: unfolded tensor as a matrix in mode n
 """
-function unfold(X::AbstractArray, n::Integer)
-    N = ndims(X)
+function unfold(X, n::Integer)
+    N  = ndims(X)
     sz = size(X)
-    # Bring mode n to the first dimension, keep relative order of others
-    perm = (n, (1:N)[(1:N) .!= n]...)
-    Xp = permutedims(X, perm) ### permute dimensions is ass vermeid dit pls 
-    reshape(Xp, sz[n], :)
+    p  = (n, setdiff(1:N, n)...)
+
+    # Geen echte permute-kopie: alleen een view met andere indexmapping
+    Yp = PermutedDimsArray(X, p)
+
+    # reshape maakt ook geen kopie
+    return reshape(Yp, sz[n], :)
 end
 
 """
@@ -27,7 +29,6 @@ Output:
     X - Tensor , the fold of A
 
 """
-
 function fold(A::AbstractMatrix, n::Integer,dim::Vector{Int})
   m = setdiff(1:length(dim), n)
   X = reshape(A,[dim[n];dim[m]]...)

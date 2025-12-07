@@ -8,10 +8,10 @@ Input: X is a tensor
     A contains the matrices to multiply with
 Output : 
 """
-function NaiveMultiplication(X::AbstractArray, A::MatrixCell) # mode order als argument meegeven
+function NaiveMultiplication(X::AbstractArray, A::MatrixCell, order::Vector{Int}) # mode order als argument meegeven
     N = ndims(X)
-    #@assert length(A) == N
-
+    P = order
+    X = permutedims(X, P)
     for i in 1:N
         #@assert size(A[i], 2) == size(X, i) "A[$i] has incompatible dimensions"
         Xmat = unfold(X, i)
@@ -20,6 +20,7 @@ function NaiveMultiplication(X::AbstractArray, A::MatrixCell) # mode order als a
         sz[i] = size(A[i], 1)
         X = matten(Xmat, i, sz)
     end
+    X = permutedims(X, invperm(P))
     return X
 end
 

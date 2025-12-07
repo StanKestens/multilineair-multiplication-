@@ -31,8 +31,11 @@ function CyclicShiftMultiplication(X::AbstractArray,A::Vector{<:AbstractMatrix},
     for i in 1:d
         a1 = prod(dims[i+2:length(dims)])
         a2 = size(A[i])[1] * a2 
+        #blijkbaar is deze fout
         push!(final_dims, size(A[i],1)) #this (hopefully) adds all the final dimensions in the right order)
+        # switch deze volgorde 
         X =  transpose(A[i]) * transpose(X) # we do this so we are in a strided non-adjoint matrix 
+        #reshape met : gebruiken
         X = reshape(X, div(size(X)[1],(a1*a2)), size(X)[2]*a1*a2)
     end
     X = reshape(X, final_dims...)
