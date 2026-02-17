@@ -6,15 +6,25 @@ using Statistics
 using Printf
 using LinearAlgebra
 
-include("naive.jl")
-include("orderingMultiplication.jl")
-include("cyclicShift.jl")
+include("naive.jl")                  # NaiveMultiplication(X, A, order)
+include("orderingMultiplication.jl") # NonNaiveMultiplication(X, A, order)
 include("tensor.jl")
 include("ordering.jl")
 
-# --------------------------
-# Cases genereren
-# --------------------------
+# ============================================================
+# 1. Methoden definiëren (HIER voeg je nieuwe functies toe)
+# ============================================================
+
+# Alle methodes hebben signatuur: f(X::AbstractArray, A::MatrixCell, order::Vector{Int})
+const METHODS = Dict{Symbol,Function}(
+    :Naive   => NaiveMultiplication,
+    :Ordered => NonNaiveMultiplication,
+    # :NewAlg => NewAlgMultiplication,   # voorbeeld
+)
+
+# ============================================================
+# 2. Cases genereren
+# ============================================================
 
 function make_case(order::Symbol, n::Int, d::Int)
     X = randn(ntuple(_ -> n, d))
@@ -39,153 +49,134 @@ function make_case(order::Symbol, n::Int, d::Int)
     return X, A
 end
 
-# --------------------------
-# Benchmark voor één (order, n, d)
-# --------------------------
+# ============================================================
+# 3. Structs voor resultaten
+# ============================================================
 
-function benchmark_case(order::Symbol, n::Int, d::Int)
-    X, A = make_case(order, n, d)
-
-    t1 = @benchmark NaiveMultiplication($X, $A)
-    m1   = median(t1.times) / 1e6     # ms
-    mem1 = t1.memory                  # bytes
-    a1   = t1.allocs
-    
-    t2 = @benchmark NonNaiveMultiplication($X, $A)
-    m2   = median(t2.times) / 1e6
-    mem2 = t2.memory
-    a2   = t2.allocs
-    
-    t3 = @benchmark CyclicShiftMultiplication($X, $A, collect(1:length(A)))
-    m3   = median(t3.times) / 1e6
-    mem3 = t3.memory
-    a3   = t3.allocs
-
-    @printf(
-        "  -> time Naive = %.3f ms, ordering = %.3f ms, cyclic = %.3f ms | mem Naive = %.2f MB, ordering = %.2f MB, cyclic = %.2f MB | allocs Naive = %d, ordering = %d, cyclic = %d\n",
-        m1, m2, m3, mem1/1e6, mem2/1e6, mem3/1e6, a1, a2, a3
-    )
-
-    return m1, m2, m3, mem1, mem2, mem3, a1, a2, a3
+struct MethodStats
+    time_ms::Float64    # mediane tijd in ms
+    memory::Float64     # bytes
+    allocs::Int         # aantal allocaties
 end
-
-# --------------------------
-# Struct voor resultaten
-# --------------------------
 
 struct BenchmarkResults
     dims::Vector{Int}
     orders::Vector{Symbol}
-    medians1::Dict{Symbol,Vector{Float64}}   # Naive tijd
-    medians2::Dict{Symbol,Vector{Float64}}   # NonNaive tijd
-    medians3::Dict{Symbol,Vector{Float64}}   # Cyclic tijd
-    mem1::Dict{Symbol,Vector{Float64}}       # Naive memory (bytes)
-    mem2::Dict{Symbol,Vector{Float64}}       # NonNaive memory (bytes)
-    mem3::Dict{Symbol,Vector{Float64}}       # Cyclic memory (bytes)
-    allocs1::Dict{Symbol,Vector{Int}}
-    allocs2::Dict{Symbol,Vector{Int}}
-    allocs3::Dict{Symbol,Vector{Int}}
+    methods::Vector{Symbol}
+    times::Dict{Symbol,Dict{Symbol,Vector{Float64}}}   # method => order(sym) => [tijd]
+    mem::Dict{Symbol,Dict{Symbol,Vector{Float64}}}     # method => order(sym) => [bytes]
+    allocs::Dict{Symbol,Dict{Symbol,Vector{Int}}}      # method => order(sym) => [allocs]
 end
 
-# --------------------------
-# Alle experimenten draaien
-# --------------------------
+# ============================================================
+# 4. Benchmark voor één (order_sym, n, d)
+# ============================================================
 
-function run_experiments(n::Int, dims::AbstractVector{<:Int})
+function benchmark_case(order_sym::Symbol, n::Int, d::Int; methods = METHODS)
+    X, A = make_case(order_sym, n, d)
+
+    # mode order voor alle methodes (pas dit aan als je andere permutaties wil testen)
+    P = collect(1:d)
+
+    results = Dict{Symbol,MethodStats}()
+
+    println("  Methoden voor order = $(order_sym):")
+    for (mname, f) in methods
+        t = @benchmark $f($X, $A, $P)
+        time_ms = median(t.times) / 1e6
+        mem     = t.memory
+        allocs  = t.allocs
+
+        @printf(
+            "    %-10s: time = %.3f ms | mem = %.2f MB | allocs = %d\n",
+            String(mname), time_ms, mem/1e6, allocs
+        )
+
+        results[mname] = MethodStats(time_ms, mem, allocs)
+    end
+
+    return results
+end
+
+# ============================================================
+# 5. Alle experimenten draaien
+# ============================================================
+
+function run_experiments(n::Int, dims::AbstractVector{<:Int}; methods = METHODS)
     orders = [:normal, :shuffle, :reverse]
 
-    med1 = Dict(o => Float64[] for o in orders)
-    med2 = Dict(o => Float64[] for o in orders)
-    med3 = Dict(o => Float64[] for o in orders)
-    mem1 = Dict(o => Float64[] for o in orders)
-    mem2 = Dict(o => Float64[] for o in orders)
-    mem3 = Dict(o => Float64[] for o in orders)
-    a1   = Dict(o => Int[]      for o in orders)
-    a2   = Dict(o => Int[]      for o in orders)
-    a3   = Dict(o => Int[]      for o in orders)
+    # method => order(sym) => vector
+    times  = Dict(m => Dict(o => Float64[] for o in orders) for m in keys(methods))
+    mems   = Dict(m => Dict(o => Float64[] for o in orders) for m in keys(methods))
+    allocs = Dict(m => Dict(o => Int[]     for o in orders) for m in keys(methods))
 
     for d in dims
         println("===== d = $d =====")
         for o in orders
-            m1, m2, m3, mm1, mm2, mm3, aa1, aa2, aa3 = benchmark_case(o, n, d)
-            push!(med1[o], m1)
-            push!(med2[o], m2)
-            push!(med3[o], m3)
-            push!(mem1[o], mm1)
-            push!(mem2[o], mm2)
-            push!(mem3[o], mm3)
-            push!(a1[o], aa1)
-            push!(a2[o], aa2)
-            push!(a3[o], aa3)
+            case_results = benchmark_case(o, n, d; methods = methods)
+            for (mname, stats) in case_results
+                push!(times[mname][o],  stats.time_ms)
+                push!(mems[mname][o],   stats.memory)
+                push!(allocs[mname][o], stats.allocs)
+            end
         end
     end
 
-    return BenchmarkResults(collect(dims), orders, med1, med2, med3, mem1, mem2, mem3, a1, a2, a3)
+    return BenchmarkResults(
+        collect(dims),
+        orders,
+        collect(keys(methods)),
+        times,
+        mems,
+        allocs,
+    )
 end
 
-# --------------------------
-# Plotten
-# --------------------------
+# ============================================================
+# 6. Plotten
+# ============================================================
 
 function make_plots(res::BenchmarkResults)
-    labels_time = Dict(
-        :normal  => ("Naive time normal ordering",    "Ordering time normal ordering", "Cyclic time normal ordering"),
-        :shuffle => ("Naive time shuffle ordering",   "Ordering time shuffle ordering", "Cyclic time shuffle ordering"),
-        :reverse => ("Naive time reverse ordering",   "Ordering time reverse ordering", "Cyclic time reverse ordering"),
-    )
-
-    labels_mem = Dict(
-        :normal  => ("Naive memory normal ordering",  "Ordering memory normal ordering", "Cyclic memory normal ordering"),
-        :shuffle => ("Naive memory shuffle ordering", "Ordering memory shuffle ordering", "Cyclic memory shuffle ordering"),
-        :reverse => ("Naive memory reverse ordering", "Ordering memory reverse ordering", "Cyclic memory reverse ordering"),
-    )
-
     # Tijd
     p_time = plot(
-        res.dims, res.medians1[:normal],
-        label  = labels_time[:normal][1],
         xlabel = "Tensor Order (d)",
         ylabel = "Median Time (ms)",
         title  = "Multilinear Multiplication: Time",
         legend = :topleft,
     )
-    plot!(p_time, res.dims, res.medians1[:shuffle], label = labels_time[:shuffle][1])
-    plot!(p_time, res.dims, res.medians1[:reverse], label = labels_time[:reverse][1])
-    plot!(p_time, res.dims, res.medians2[:normal],  label = labels_time[:normal][2])
-    plot!(p_time, res.dims, res.medians2[:shuffle], label = labels_time[:shuffle][2])
-    plot!(p_time, res.dims, res.medians2[:reverse], label = labels_time[:reverse][2])
-    plot!(p_time, res.dims, res.medians3[:normal],  label = labels_time[:normal][3])
-    plot!(p_time, res.dims, res.medians3[:shuffle], label = labels_time[:shuffle][3])
-    plot!(p_time, res.dims, res.medians3[:reverse], label = labels_time[:reverse][3])
 
-    # Geheugen (naar MB)
+    for m in res.methods
+        for o in res.orders
+            label = string(m, " (", String(o), ")")
+            plot!(p_time, res.dims, res.times[m][o], label = label)
+        end
+    end
+
+    # Geheugen
     p_mem = plot(
-        res.dims, res.mem1[:normal] ./ 1e6,
-        label  = labels_mem[:normal][1],
         xlabel = "Tensor Order (d)",
         ylabel = "Memory (MB)",
-        legend = :topleft,
         title  = "Multilinear Multiplication: Memory",
+        legend = :topleft,
     )
-    plot!(p_mem, res.dims, res.mem1[:shuffle] ./ 1e6, label = labels_mem[:shuffle][1])
-    plot!(p_mem, res.dims, res.mem1[:reverse] ./ 1e6, label = labels_mem[:reverse][1])
-    plot!(p_mem, res.dims, res.mem2[:normal] ./ 1e6,  label = labels_mem[:normal][2])
-    plot!(p_mem, res.dims, res.mem2[:shuffle] ./ 1e6, label = labels_mem[:shuffle][2])
-    plot!(p_mem, res.dims, res.mem2[:reverse] ./ 1e6, label = labels_mem[:reverse][2])
-    plot!(p_mem, res.dims, res.mem3[:normal] ./ 1e6,  label = labels_mem[:normal][3])
-    plot!(p_mem, res.dims, res.mem3[:shuffle] ./ 1e6, label = labels_mem[:shuffle][3])
-    plot!(p_mem, res.dims, res.mem3[:reverse] ./ 1e6, label = labels_mem[:reverse][3])
+
+    for m in res.methods
+        for o in res.orders
+            label = string(m, " (", String(o), ")")
+            plot!(p_mem, res.dims, res.mem[m][o] ./ 1e6, label = label)
+        end
+    end
 
     return plot(p_time, p_mem, layout = (2, 1), size = (900, 700))
 end
 
-# --------------------------
-# main
-# --------------------------
+# ============================================================
+# 7. main
+# ============================================================
 
-function main(; n::Int = 2, dims = 1:2, seed::Int = 1234)
+function main(; n::Int = 2, dims = 1:2, seed::Int = 1234, methods = METHODS)
     Random.seed!(seed)
-    res = run_experiments(n, collect(dims))
+    res = run_experiments(n, collect(dims); methods = methods)
     fig = make_plots(res)
     display(fig)
     return res
