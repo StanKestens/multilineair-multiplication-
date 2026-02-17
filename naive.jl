@@ -8,7 +8,7 @@ Input: X is a tensor
     A contains the matrices to multiply with
 Output : 
 """
-function NaiveMultiplication(X::AbstractArray, A::MatrixCell, order::Vector{Int}) # mode order als argument meegeven
+function NaiveMultiplication(X::AbstractArray, A::Vector{<:AbstractMatrix}, order::Vector{Int}) # mode order als argument meegeven
     N = ndims(X)
     P = order
     X = permutedims(X, P)
@@ -29,4 +29,3 @@ end
  A = MatrixCell([randn(3,4), randn(7,5), randn(2,6)])
 
  Y = NaiveMultiplication(X, A, [1,2,3])
-    println("Output size: ", size(Y))  # Verwacht (3,7,2)

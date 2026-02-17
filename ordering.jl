@@ -7,7 +7,7 @@ Input : X::AbstractArray, Our representation of a tensor
 Output: order , the results by the given formula
 
 """
-function OptimalOrdering(X::AbstractArray, matrices::MatrixCell)
+function OptimalOrdering(X::AbstractArray, matrices::Vector{<:AbstractMatrix})
     ns = size(X)
     ms = [size(U, 1) for U in matrices]
     β = [1/ns[k] - 1/ms[k] for k in 1:length(matrices)]
