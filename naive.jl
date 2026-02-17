@@ -18,14 +18,15 @@ function NaiveMultiplication(X::AbstractArray, A::MatrixCell, order::Vector{Int}
         Xmat = A[i] * Xmat
         sz = collect(size(X))
         sz[i] = size(A[i], 1)
-        X = matten(Xmat, i, sz)
+        X = fold(Xmat, i, sz)
     end
     X = permutedims(X, invperm(P))
     return X
 end
 
 # Test
-# X = randn(4, 5, 6)
-# A = MatrixCell([randn(3,4), randn(7,5), randn(2,6)])
+ X = randn(4, 5, 6)
+ A = MatrixCell([randn(3,4), randn(7,5), randn(2,6)])
 
-# Y = naive_ttm(X, A)
+ Y = NaiveMultiplication(X, A, [1,2,3])
+    println("Output size: ", size(Y))  # Verwacht (3,7,2)
