@@ -31,7 +31,7 @@ end
 function benchmark_permutations(perms, X, A)
     times_ms = Float64[]
     for P in perms
-        t = @benchmark NaiveMultiplication($X, $A, $P) samples=50 evals=1
+        t = @benchmark NaiveMultiplication($X, $A, $P) samples = 10 evals = 1
         push!(times_ms, median(t.times) / 1e6)
     end
     return times_ms
@@ -40,48 +40,52 @@ end
 # -----------------------------
 # Main (4D case)
 # -----------------------------
-X = randn(50,50,50,50) 
+X = rand(3, 3, 3, 3, 3)
 
-A = MatrixCell([
-    randn(1,50),
-    randn(5,50),
-    randn(500,50),
-    randn(1500,50)
-])
+A = Vector{AbstractMatrix}(undef, 5)
 
+A[1] = randn(40, 3)   # mode 1 (4 → 10)
+A[2] = randn(240, 3)   # mode 2 (5 → 30)
+A[3] = randn(360, 3)   # mode 3 (6 → 20)
+A[4] = randn(120, 3)   # mode 4 (7 → 30)
+A[5] = randn(1, 3)  # mode 5 (8 → 100)
 println("Heuristic optimal order: ", OptimalOrdering(X, A))
 
-perms = generate_permutations(4)
+perms = generate_permutations(5)
 println("Number of permutations: ", length(perms))  # 24
 
 times_ms = benchmark_permutations(perms, X, A)
 
 # Best and worst
-best_idx  = argmin(times_ms)
+best_idx = argmin(times_ms)
 worst_idx = argmax(times_ms)
 
 # Print mapping (index → permutation)
 println("\nPermutation index mapping:")
 for i in 1:length(perms)
-    println(rpad(i, 3), " → ", perms[i])
+    println(rpad(i, 3), " → ", perms[i,])
 end
-println("Best permutation index = ", best_idx,  "   ", perms[best_idx],
-        "   time = ", times_ms[best_idx], " ms")
+println("Best permutation index = ", best_idx, "   ", perms[best_idx], "   time = ", times_ms[best_idx], " ms")
 println("Worst permutation index = ", worst_idx, "   ", perms[worst_idx],
-        "   time = ", times_ms[worst_idx], " ms")
+    "   time = ", times_ms[worst_idx], " ms")
 
 
 # -----------------------------
 # Plot (clean x-axis)
 # -----------------------------
+
+heuristic_idx = findfirst(p -> p == OptimalOrdering(X, A), perms)
+colors = fill(:steelblue, length(perms))
+colors[heuristic_idx] = :red   # highlight heuristic
 bar(
     1:length(perms),
     times_ms,
-    xlabel = "Permutation index (1–24)",
-    ylabel = "Median time (ms)",
-    title  = "NaiveMultiplication runtime over all 4! permutations",
-    legend = false,
-    xticks = 1:24,   # clean numbered x-axis
-    xrotation = 0,
-    size = (900, 450)
+    color=colors,
+    xlabel="Permutation index",
+    ylabel="Median time (ms)",
+    title="NaiveMultiplication runtime over all permutations",
+    legend=false,
+    xticks=1:length(perms),
+    size=(900, 450)
 )
+

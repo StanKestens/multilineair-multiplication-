@@ -8,12 +8,12 @@ Input: X: tensor (AbstractArray)
 Output: unfolded tensor as a matrix in mode n
 """
 function unfold(X, n::Integer)
-    N  = ndims(X)
+    N = ndims(X)
     sz = size(X)
-    p  = (n, setdiff(1:N, n)...)
+    p = (n, setdiff(1:N, n)...)
 
     # Geen echte permute-kopie: alleen een view met andere indexmapping
-    Yp = PermutedDimsArray(X, p)
+    Yp = permutedims(X, p)
 
     # reshape maakt ook geen kopie
     return reshape(Yp, sz[n], :)
@@ -27,10 +27,11 @@ Input:
     n-mode in which were folding
 Output:
     X - Tensor , the fold of A
-
 """
 function fold(A::AbstractMatrix, n::Integer, dim::Vector{Int})
     m = setdiff(1:length(dim), n)
     X = reshape(A, [dim[n]; dim[m]]...)
-    return permutedims(X, invperm([n; m]))
+    p = invperm((n, m...))
+    Y = permutedims(X, p)
+    return Y
 end

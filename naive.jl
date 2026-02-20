@@ -9,23 +9,18 @@ Input: X is a tensor
 Output : 
 """
 function NaiveMultiplication(X::AbstractArray, A::Vector{<:AbstractMatrix}, order::Vector{Int}) # mode order als argument meegeven
-    N = ndims(X)
-    P = order
-    X = permutedims(X, P)
-    for i in 1:N
-        #@assert size(A[i], 2) == size(X, i) "A[$i] has incompatible dimensions"
-        Xmat = unfold(X, i)
-        Xmat = A[i] * Xmat
+    for mode in order
+        Xmat = unfold(X, mode)
+        Xmat = A[mode] * Xmat
         sz = collect(size(X))
-        sz[i] = size(A[i], 1)
-        X = fold(Xmat, i, sz)
+        sz[mode] = size(A[mode], 1)
+        X = fold(Xmat, mode, sz)
     end
-    X = permutedims(X, invperm(P))
     return X
 end
 
 # Test
- X = randn(4, 5, 6)
- A = MatrixCell([randn(3,4), randn(7,5), randn(2,6)])
+X = randn(4, 5, 6)
+A = MatrixCell([randn(3, 4), randn(7, 5), randn(2, 6)])
 
- Y = NaiveMultiplication(X, A, [1,2,3])
+Y = NaiveMultiplication(X, A, [1, 2, 3])

@@ -18,30 +18,34 @@ Output : X, the same tensor multiplied by each each matrix in A
 
 """
 
-function CyclicShiftMultiplication(X::AbstractArray,A::Vector{<:AbstractMatrix},M::Vector{Int} )
-    P = getPermutation(X, A,M)
+function CyclicShiftMultiplication(X::AbstractArray, A::Vector{AbstractMatrix}, M::Vector{Int})
+    P = M
     X = permutedims(X, P)
     d = length(A)
     dims = size(X)
     #X = unfold(X, 1) -> not sure if this is needed because we are already saved this way (column major order), so i think we can just do :
-    X = reshape(X, dims[1], div(prod(dims),dims[1]))
+    X = reshape(X, dims[1], :)
+    first_dims = size.(A, 1)
     a2 = 1
-    a1 = 1
+    first_dims = insert!(first_dims, 1, 1)
     final_dims = []
     for i in 1:d
-        a1 = prod(dims[i+2:length(dims)])
-        a2 = size(A[i])[1] * a2 
+        println("Nieuwe a1: ", prod(dims[i+2:length(dims)]))
+        a2 = first_dims[i] * a2
+        println("Nieuwe a2: ", a2)
         #blijkbaar is deze fout
-        push!(final_dims, size(A[i],1)) #this (hopefully) adds all the final dimensions in the right order)
-        # switch deze volgorde 
-        X =  transpose(A[i]) * transpose(X) # we do this so we are in a strided non-adjoint matrix 
+        push!(final_dims, size(A[i], 1)) #this (hopefully) adds all the final dimensions in the right order)
+        # switch deze volgorde  
+        X = transpose(X) * transpose(A[i])   # we do this so we are in a strided non-adjoint matrix 
         #reshape met : gebruiken
-        X = reshape(X, div(size(X)[1],(a1*a2)), size(X)[2]*a1*a2)
+        X = reshape(X, div(size(X)[1], (prod(dims[i+2:length(dims)]) * a2)), :)
+        println(X)
+        println(size(X))
     end
     X = reshape(X, final_dims...)
     X = permutedims(X, invperm(P)) #get back to original indexation of the tensor
     return X
-end 
+end
 
 """
 This function will decide the optimal way to calculate the cyclic shift based on :
@@ -55,7 +59,7 @@ This function will decide the optimal way to calculate the cyclic shift based on
     1ste versie : werkt enkel als |M| = order(A)
 """
 
-function getPermutation(X::AbstractArray,A::Vector{<:AbstractMatrix},M::Vector{Int})
-    P = OptimalOrdering(X,M)
+function getPermutation(X::AbstractArray, A::Vector{<:AbstractMatrix}, M::Vector{Int})
+    P = OptimalOrdering(X, M)
     return P
 end
