@@ -11,8 +11,7 @@ X = rand(5, 6, 7)
 
 A = [
     randn(2, 5),
-    randn(3, 6),
-    randn(4, 7)
+    randn(3, 6)
 ]
 
 Y = CyclicShiftMultiplication(X, A, [1, 2, 3])

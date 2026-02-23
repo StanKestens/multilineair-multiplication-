@@ -18,23 +18,21 @@ Output : X, the same tensor multiplied by each each matrix in A
 
 """
 
-function CyclicShiftMultiplication(X::AbstractArray, A::Vector{AbstractMatrix}, M::Vector{Int})
+function CyclicShiftMultiplication(X::AbstractArray, A::Vector{<:AbstractMatrix}, M::Vector{Int})
     P = M
     X = permutedims(X, P)
     d = length(A)
-    dims = size(X)
+    dims = collect(size(X)) #use collect so we can change final_dims 
     #X = unfold(X, 1) -> not sure if this is needed because we are already saved this way (column major order), so i think we can just do :
     X = reshape(X, dims[1], :)
     first_dims = size.(A, 1)
     a2 = 1
     first_dims = insert!(first_dims, 1, 1)
-    final_dims = []
+    final_dims = dims
     for i in 1:d
-        println("Nieuwe a1: ", prod(dims[i+2:length(dims)]))
         a2 = first_dims[i] * a2
-        println("Nieuwe a2: ", a2)
         #blijkbaar is deze fout
-        push!(final_dims, size(A[i], 1)) #this (hopefully) adds all the final dimensions in the right order)
+        setindex!(final_dims, size(A[i], 1), i)
         # switch deze volgorde  
         X = transpose(X) * transpose(A[i])   # we do this so we are in a strided non-adjoint matrix 
         #reshape met : gebruiken
