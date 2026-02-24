@@ -19,29 +19,21 @@ Output : X, the same tensor multiplied by each each matrix in A
 """
 
 function CyclicShiftMultiplication(X::AbstractArray, A::Vector{<:AbstractMatrix}, M::Vector{Int})
-    P = M
-    X = permutedims(X, P)
-    d = length(A)
-    dims = collect(size(X)) #use collect so we can change final_dims 
-    #X = unfold(X, 1) -> not sure if this is needed because we are already saved this way (column major order), so i think we can just do :
+    m = length(A)
+    dims = collect(size(X))
     X = reshape(X, dims[1], :)
-    first_dims = size.(A, 1)
-    a2 = 1
-    first_dims = insert!(first_dims, 1, 1)
-    final_dims = dims
-    for i in 1:d
-        a2 = first_dims[i] * a2
-        #blijkbaar is deze fout
-        setindex!(final_dims, size(A[i], 1), i)
+    R = size.(A, 1) #list of new dimensions 
+    R = insert!(R, 1, 1)
+    a = 1
+    for i in 1:m
+        a = R[i] * a
         # switch deze volgorde  
         X = transpose(X) * transpose(A[i])   # we do this so we are in a strided non-adjoint matrix 
         #reshape met : gebruiken
-        X = reshape(X, div(size(X)[1], (prod(dims[i+2:length(dims)]) * a2)), :)
-        println(X)
-        println(size(X))
+        X = reshape(X, div(size(X)[1], (prod(dims[i+2:length(dims)]) * a)), :)
     end
-    X = reshape(X, final_dims...)
-    X = permutedims(X, invperm(P)) #get back to original indexation of the tensor
+    R = deleteat!(R, 1)
+    X = reshape(X, vcat(R, dims[m+1:end])...)
     return X
 end
 
