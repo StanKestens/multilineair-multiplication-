@@ -1,32 +1,99 @@
 using BenchmarkTools
 using Random
+using LinearAlgebra
 using Plots
+using Combinatorics
+using ProgressMeter
 
 include("tensor.jl")
 include("ordering.jl")
 include("naive.jl")
 include("cyclicShift.jl")
 
-function (d::Int)
-    #Setting up a random tensor dimension d
-    dimensies = rand(2:10, d) #TODO : make 10 higher when doing actual running 
+function benchmark_cyclic(d, g; trials=1)
+    min_grootte_tensor = 5
+    max_grootte_tensor = 10
+    min_grootte_matrix = 15
+    max_grootte_matrix = 25
+    # Random tensor
+    dimensies = rand(min_grootte_tensor:max_grootte_tensor, d)
     X = randn(dimensies...)
-    #Generating all A_i
-    m = 10 #TODO : deze bound ook hoger maken
-    A = [randn(rand(1:m), dimensies[i]) for i in 1:d]
-    for i in 1:d # Looping over where the gap is, in more general case this would have to be d choose g options (g amount of gaps)
-        #The options
-        A_new = A
-        #1) running with unity matrix at position i
-        setindex!(A_new, I_n=Matrix(I, n, n), i)
-        X_unity = CyclicShiftMultiplication(X, A_new, collect(1:d))
-        #2) permuting
-        #this option is a bit trickier, we permutedim to put our gap at the end
-        P = vcat(1:i-1, i+1:d, i) # permutationvector
+
+
+    A = [randn(rand(min_grootte_matrix:max_grootte_matrix), dimensies[i]) for i in 1:d]
+
+    perm_identity = collect(1:d)
+
+    t1_total = 0.0
+    t2_total = 0.0
+    count = 0
+
+    for gap_positions in combinations(1:d, g)
+        println(gap_positions)
+        # OPTION 1: Unity matrices
+        println("optie 1")
+        A_unity = copy(A)
+
+        for i in gap_positions
+            n_i = dimensies[i]
+            A_unity[i] = Matrix(I, n_i, n_i)
+        end
+
+        t1 = @belapsed CyclicShiftMultiplication($X, $A_unity, $perm_identity)
+
+        # OPTION 2: Permute gaps to end
+        println("optie 2")
+        OP = OptimalOrdering(X, A)
+        P = vcat(setdiff(OP, gap_positions), gap_positions)
+
         X_perm = permutedims(X, P)
         A_perm = A[P]
-        X_perm = CyclicShiftMultiplication(X_perm, A_perm, collect(1:d))
-        X_perm_back = permutedims(X_perm, invperm(P))
-        #these have to be compared in speed
+        t2 = @belapsed begin
+            Y = CyclicShiftMultiplication($X_perm, $A_perm, $perm_identity)
+            permutedims(Y, invperm($P))
+        end
+
+        t1_total += t1
+        t2_total += t2
+        count += 1
     end
+
+    # Return average over all gap placements
+    return t1_total / count, t2_total / count
 end
+
+ds = 2:6
+g = 2  # try 1 gap first
+
+function run_benchmarks(ds, g)
+    times_unity = Float64[]
+    times_perm = Float64[]
+
+    total = length(ds)
+    prog = Progress(total, desc="Benchmarking...")
+
+    for d in ds
+        println("Running dimension d = $d ")
+        t1, t2 = benchmark_cyclic(d, g)
+
+        push!(times_unity, t1)
+        push!(times_perm, t2)
+
+        next!(prog)   #  update progress bar
+    end
+
+    return times_unity, times_perm
+end
+times_unity, times_perm = run_benchmarks(ds, g)
+
+display(plot(ds, times_unity,
+    label="Unity Matrix",
+    xlabel="Tensor Order d",
+    ylabel="Time (seconds)",
+    lw=2))
+
+plot!(ds, times_perm,
+    label="Permute Strategy",
+    lw=2)
+
+display(current())
