@@ -8,6 +8,7 @@ using LinearAlgebra
 
 include("naive.jl")                  # NaiveMultiplication(X, A, order)
 include("orderingMultiplication.jl") # NonNaiveMultiplication(X, A, order)
+include("cyclicShift.jl")           # CyclicShiftMultiplication(X, A, order)
 include("tensor.jl")
 include("ordering.jl")
 
@@ -19,6 +20,7 @@ include("ordering.jl")
 const METHODS = Dict{Symbol,Function}(
     :Naive   => NaiveMultiplication,
     :Ordered => NonNaiveMultiplication,
+    :CyclicShift => CyclicShiftMultiplication,   # voorbeeld
     # :NewAlg => NewAlgMultiplication,   # voorbeeld
 )
 
@@ -135,46 +137,66 @@ end
 # ============================================================
 # 6. Plotten
 # ============================================================
-
 function make_plots(res::BenchmarkResults)
+
+    avg_times, avg_mem = average_over_orders(res)
+
     # Tijd
     p_time = plot(
         xlabel = "Tensor Order (d)",
-        ylabel = "Median Time (ms)",
-        title  = "Multilinear Multiplication: Time",
+        ylabel = "Average Median Time (ms)",
+        title  = "Multilinear Multiplication: Average Time",
         legend = :topleft,
+        yscale = :log10,
+        
     )
 
     for m in res.methods
-        for o in res.orders
-            label = string(m, " (", String(o), ")")
-            plot!(p_time, res.dims, res.times[m][o], label = label)
-        end
+        plot!(p_time, res.dims, avg_times[m], label = string(m))
     end
 
     # Geheugen
     p_mem = plot(
         xlabel = "Tensor Order (d)",
-        ylabel = "Memory (MB)",
-        title  = "Multilinear Multiplication: Memory",
+        ylabel = "Average Memory (MB)",
+        title  = "Multilinear Multiplication: Average Memory",
         legend = :topleft,
+        yscale = :log10,
+        
     )
 
     for m in res.methods
-        for o in res.orders
-            label = string(m, " (", String(o), ")")
-            plot!(p_mem, res.dims, res.mem[m][o] ./ 1e6, label = label)
-        end
+        plot!(p_mem, res.dims, avg_mem[m] ./ 1e6, label = string(m))
     end
 
     return plot(p_time, p_mem, layout = (2, 1), size = (900, 700))
 end
 
+function average_over_orders(res::BenchmarkResults)
+    avg_times = Dict{Symbol,Vector{Float64}}()
+    avg_mem   = Dict{Symbol,Vector{Float64}}()
+
+    for m in res.methods
+        avg_times[m] = Float64[]
+        avg_mem[m]   = Float64[]
+
+        for i in eachindex(res.dims)
+            tvals = [res.times[m][o][i] for o in res.orders]
+            mvals = [res.mem[m][o][i]   for o in res.orders]
+
+            push!(avg_times[m], mean(tvals))
+            push!(avg_mem[m],   mean(mvals))
+        end
+    end
+
+    return avg_times, avg_mem
+end
 # ============================================================
 # 7. main
 # ============================================================
 
-function main(; n::Int = 2, dims = 1:2, seed::Int = 1234, methods = METHODS)
+#voor dims 3:6
+function main(; n::Int = 2, dims = 5:7, seed::Int = 1234, methods = METHODS)
     Random.seed!(seed)
     res = run_experiments(n, collect(dims); methods = methods)
     fig = make_plots(res)
