@@ -11,6 +11,7 @@ include("orderingMultiplication.jl") # NonNaiveMultiplication(X, A, order)
 include("cyclicShift.jl")           # CyclicShiftMultiplication(X, A, order)
 include("tensor.jl")
 include("ordering.jl")
+include("bruteforce.jl")          # bruteforce(X, A)
 
 # ============================================================
 # 1. Methoden definiëren (HIER voeg je nieuwe functies toe)
@@ -18,9 +19,10 @@ include("ordering.jl")
 
 # Alle methodes hebben signatuur: f(X::AbstractArray, A::MatrixCell, order::Vector{Int})
 const METHODS = Dict{Symbol,Function}(
-    :Naive   => NaiveMultiplication,
-    :Ordered => NonNaiveMultiplication,
+    :Naïve   => NaiveMultiplication,
+    :Ordered => (X, A, P) -> NonNaiveMultiplication(X, A),
     :CyclicShift => CyclicShiftMultiplication,   # voorbeeld
+    :Bruteforce => (X, A, P) -> bruteforce(X, A),                   # voorbeeld
     # :NewAlg => NewAlgMultiplication,   # voorbeeld
 )
 
@@ -105,7 +107,7 @@ end
 # ============================================================
 
 function run_experiments(n::Int, dims::AbstractVector{<:Int}; methods = METHODS)
-    orders = [:normal, :shuffle, :reverse]
+    orders = [:shuffle]
 
     # method => order(sym) => vector
     times  = Dict(m => Dict(o => Float64[] for o in orders) for m in keys(methods))
@@ -148,7 +150,7 @@ function make_plots(res::BenchmarkResults)
         title  = "Multilinear Multiplication: Average Time",
         legend = :topleft,
         yscale = :log10,
-        
+         
     )
 
     for m in res.methods
@@ -196,7 +198,7 @@ end
 # ============================================================
 
 #voor dims 3:6
-function main(; n::Int = 2, dims = 5:7, seed::Int = 1234, methods = METHODS)
+function main(; n::Int = 2, dims = 3:7, seed::Int = 1234, methods = METHODS)
     Random.seed!(seed)
     res = run_experiments(n, collect(dims); methods = methods)
     fig = make_plots(res)

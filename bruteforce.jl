@@ -9,7 +9,7 @@ function bruteforce(X::AbstractArray, A::Vector{<:AbstractMatrix})
         K = kron(K, A[k])
     end
 
-    y = K * vec(X)
+    y = K *vec(X)
 
     outsz = ntuple(i -> size(A[i], 1), d)
     return reshape(y, outsz)

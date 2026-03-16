@@ -20,7 +20,8 @@ function NaiveMultiplication(X::AbstractArray, A::Vector{<:AbstractMatrix}, orde
 end
 
 # Test
-X = randn(4, 5, 6)
-A = MatrixCell([randn(3, 4), randn(7, 5), randn(2, 6)])
 
-Y = NaiveMultiplication(X, A, [1, 2, 3])
+#X = randn(4, 5, 6)
+#A = MatrixCell([randn(3, 4), randn(7, 5), randn(2, 6)])
+
+#Y = NaiveMultiplication(X, A, [1, 2, 3])
