@@ -16,7 +16,7 @@ A = [
     randn(4, 7)
 ]
 
-Y = CyclicShiftMultiplication(X, A, [1, 2, 3])
+Y = CyclicShiftMultiplication(X, A, [1, 2])
 
 Z = bruteforce(X, A)
 B = NaiveMultiplication(X, A, [1, 2, 3])
