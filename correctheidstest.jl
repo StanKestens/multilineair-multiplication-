@@ -14,5 +14,5 @@ A = [
     randn(3, 6)
 ]
 
-Y = CyclicShiftMultiplication(X, A, [1, 2, 3])
+Y = CyclicShiftMultiplication(X, A, [1, 2])
 
