@@ -12,3 +12,5 @@ Done for now:
 -DONE
 -naive implementatie
 -gebruik makend van formule 
+
+In the plots you will find the current results, except the ones already used in for example the poster.
