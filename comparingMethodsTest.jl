@@ -8,22 +8,21 @@ using LinearAlgebra
 
 include("naive.jl")                  # NaiveMultiplication(X, A, order)
 include("orderingMultiplication.jl") # NonNaiveMultiplication(X, A, order)
-include("cyclicShift.jl")           # CyclicShiftMultiplication(X, A, order)
+include("cyclicShift.jl")            # CyclicShiftMultiplication(X, A, order)
 include("tensor.jl")
 include("ordering.jl")
-include("bruteforce.jl")          # bruteforce(X, A)
+include("bruteforce.jl")             # bruteforce(X, A)
+include("constantMemoryTest.jl")    # constant_memory_shape(d; N, order)
 
 # ============================================================
-# 1. Methoden definiëren (HIER voeg je nieuwe functies toe)
+# 1. Methoden definiëren
 # ============================================================
 
-# Alle methodes hebben signatuur: f(X::AbstractArray, A::MatrixCell, order::Vector{Int})
 const METHODS = Dict{Symbol,Function}(
-    :Naïve   => NaiveMultiplication,
-    :Ordered => (X, A, P) -> NonNaiveMultiplication(X, A),
-    :CyclicShift => CyclicShiftMultiplication,   # voorbeeld
-    :Bruteforce => (X, A, P) -> bruteforce(X, A),                   # voorbeeld
-    # :NewAlg => NewAlgMultiplication,   # voorbeeld
+    :Naïve       => NaiveMultiplication,
+    :Ordered     => (X, A, P) -> NonNaiveMultiplication(X, A),
+    :CyclicShift => CyclicShiftMultiplication,
+   # :Bruteforce  => (X, A, P) -> bruteforce(X, A),
 )
 
 # ============================================================
@@ -35,11 +34,11 @@ function make_case(order::Symbol, n::Int, d::Int)
 
     idx = collect(1:d)
     sizes = if order === :normal
-        idx .* n                     # kleinste eerst
+        idx .* n
     elseif order === :shuffle
-        shuffle(idx) .* n            # willekeurige volgorde
+        shuffle(idx) .* n
     elseif order === :reverse
-        reverse(idx) .* n            # grootste eerst
+        reverse(idx) .* n
     else
         error("Onbekende order: $order")
     end
@@ -54,34 +53,77 @@ function make_case(order::Symbol, n::Int, d::Int)
 end
 
 # ============================================================
+# 2b. Constant-memory shapes
+# ============================================================
+
+const CONSTANT_N = 12500000 # = 2^5 * 5^7
+
+
+
+"""
+    constant_memory_shape(d; N=CONSTANT_N, order=:balanced)
+
+Geeft een shape van orde d met exact product N.
+"""
+
+
+"""
+    make_case_constantMemory(order, d; N=CONSTANT_N)
+
+Genereer een tensor met constant aantal elementen N maar variërende shape/orde.
+De matrixgroottes blijven variëren volgens dezelfde order-logica.
+"""
+function make_case_constantMemory(order::Symbol, d::Int; N::Int = CONSTANT_N)
+    dims = collect(factor_based_shape(N, d))
+    X = randn(dims...)
+
+    sizes = if order === :normal
+        copy(dims)
+    elseif order === :shuffle
+        shuffle(copy(dims))
+    elseif order === :reverse
+        reverse(copy(dims))
+    else
+        error("Onbekende order: $order")
+    end
+
+    @printf(
+        "d = %d | order = %s | dims = %s | prod = %d | X = %.2f MB | sizes = %s\n",
+        d, String(order), string(Tuple(dims)), prod(dims), sizeof(X)/1e6, string(sizes)
+    )
+
+    A = MatrixCell([randn(sizes[i], dims[i]) for i in 1:d])
+
+    return X, A
+end
+
+# ============================================================
 # 3. Structs voor resultaten
 # ============================================================
 
 struct MethodStats
-    time_ms::Float64    # mediane tijd in ms
-    memory::Float64     # bytes
-    allocs::Int         # aantal allocaties
+    time_ms::Float64
+    memory::Float64
+    allocs::Int
 end
 
 struct BenchmarkResults
     dims::Vector{Int}
     orders::Vector{Symbol}
     methods::Vector{Symbol}
-    times::Dict{Symbol,Dict{Symbol,Vector{Float64}}}   # method => order(sym) => [tijd]
-    mem::Dict{Symbol,Dict{Symbol,Vector{Float64}}}     # method => order(sym) => [bytes]
-    allocs::Dict{Symbol,Dict{Symbol,Vector{Int}}}      # method => order(sym) => [allocs]
+    times::Dict{Symbol,Dict{Symbol,Vector{Float64}}}
+    mem::Dict{Symbol,Dict{Symbol,Vector{Float64}}}
+    allocs::Dict{Symbol,Dict{Symbol,Vector{Int}}}
 end
 
 # ============================================================
-# 4. Benchmark voor één (order_sym, n, d)
+# 4. Benchmark voor één case
 # ============================================================
 
-function benchmark_case(order_sym::Symbol, n::Int, d::Int; methods = METHODS)
-    X, A = make_case(order_sym, n, d)
+function benchmark_case(order_sym::Symbol, n::Int, d::Int; methods = METHODS, constant_memory::Bool = false)
+    X, A = constant_memory ? make_case_constantMemory(order_sym, d) : make_case(order_sym, n, d)
 
-    # mode order voor alle methodes (pas dit aan als je andere permutaties wil testen)
     P = collect(1:d)
-
     results = Dict{Symbol,MethodStats}()
 
     println("  Methoden voor order = $(order_sym):")
@@ -92,8 +134,8 @@ function benchmark_case(order_sym::Symbol, n::Int, d::Int; methods = METHODS)
         allocs  = t.allocs
 
         @printf(
-            "    %-10s: time = %.3f ms | mem = %.2f MB | allocs = %d\n",
-            String(mname), time_ms, mem/1e6, allocs
+            "    %-12s: time = %.3f ms | mem = %.2f MB | allocs = %d\n",
+            String(mname), time_ms, mem / 1e6, allocs
         )
 
         results[mname] = MethodStats(time_ms, mem, allocs)
@@ -106,10 +148,9 @@ end
 # 5. Alle experimenten draaien
 # ============================================================
 
-function run_experiments(n::Int, dims::AbstractVector{<:Int}; methods = METHODS)
-    orders = [:shuffle]
+function run_experiments(n::Int, dims::AbstractVector{<:Int}; methods = METHODS, constant_memory::Bool = false)
+    orders = [:normal]
 
-    # method => order(sym) => vector
     times  = Dict(m => Dict(o => Float64[] for o in orders) for m in keys(methods))
     mems   = Dict(m => Dict(o => Float64[] for o in orders) for m in keys(methods))
     allocs = Dict(m => Dict(o => Int[]     for o in orders) for m in keys(methods))
@@ -117,7 +158,7 @@ function run_experiments(n::Int, dims::AbstractVector{<:Int}; methods = METHODS)
     for d in dims
         println("===== d = $d =====")
         for o in orders
-            case_results = benchmark_case(o, n, d; methods = methods)
+            case_results = benchmark_case(o, n, d; methods = methods, constant_memory = constant_memory)
             for (mname, stats) in case_results
                 push!(times[mname][o],  stats.time_ms)
                 push!(mems[mname][o],   stats.memory)
@@ -139,40 +180,6 @@ end
 # ============================================================
 # 6. Plotten
 # ============================================================
-function make_plots(res::BenchmarkResults)
-
-    avg_times, avg_mem = average_over_orders(res)
-
-    # Tijd
-    p_time = plot(
-        xlabel = "Tensor Order (d)",
-        ylabel = "Average Median Time (ms)",
-        title  = "Multilinear Multiplication: Average Time",
-        legend = :topleft,
-        yscale = :log10,
-         
-    )
-
-    for m in res.methods
-        plot!(p_time, res.dims, avg_times[m], label = string(m))
-    end
-
-    # Geheugen
-    p_mem = plot(
-        xlabel = "Tensor Order (d)",
-        ylabel = "Average Memory (MB)",
-        title  = "Multilinear Multiplication: Average Memory",
-        legend = :topleft,
-        yscale = :log10,
-        
-    )
-
-    for m in res.methods
-        plot!(p_mem, res.dims, avg_mem[m] ./ 1e6, label = string(m))
-    end
-
-    return plot(p_time, p_mem, layout = (2, 1), size = (900, 700))
-end
 
 function average_over_orders(res::BenchmarkResults)
     avg_times = Dict{Symbol,Vector{Float64}}()
@@ -193,17 +200,51 @@ function average_over_orders(res::BenchmarkResults)
 
     return avg_times, avg_mem
 end
+
+function make_plots(res::BenchmarkResults)
+    avg_times, avg_mem = average_over_orders(res)
+
+    p_time = plot(
+        xlabel = "Tensor Order (d)",
+        ylabel = "Average Median Time (ms)",
+        title  = "Multilinear Multiplication: Average Time",
+        legend = :topleft,
+        yscale = :log10,
+    )
+
+    for m in res.methods
+        plot!(p_time, res.dims, avg_times[m], label = string(m))
+    end
+
+    p_mem = plot(
+        xlabel = "Tensor Order (d)",
+        ylabel = "Average Memory (MB)",
+        title  = "Multilinear Multiplication: Average Memory",
+        legend = :topleft,
+        yscale = :log10,
+    )
+
+    for m in res.methods
+        plot!(p_mem, res.dims, avg_mem[m] ./ 1e6, label = string(m))
+    end
+
+    return plot(p_time, p_mem, layout = (2, 1), size = (900, 700))
+end
+
 # ============================================================
 # 7. main
 # ============================================================
 
-#voor dims 3:6
-function main(; n::Int = 2, dims = 3:7, seed::Int = 1234, methods = METHODS)
+function main(; n::Int = 2, dims = 3:10, seed::Int = 1234, methods = METHODS, constant_memory::Bool = false)
     Random.seed!(seed)
-    res = run_experiments(n, collect(dims); methods = methods)
+    res = run_experiments(n, collect(dims); methods = methods, constant_memory = constant_memory)
     fig = make_plots(res)
     display(fig)
     return res
 end
 
-main()
+# Standaard experiment
+# main()
+
+# Constant-memory experiment
+main(constant_memory = true)
