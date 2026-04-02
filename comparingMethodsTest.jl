@@ -213,7 +213,16 @@ function make_plots(res::BenchmarkResults)
     )
 
     for m in res.methods
-        plot!(p_time, res.dims, avg_times[m], label = string(m))
+        plot!(
+            p_time,
+            res.dims,
+            avg_times[m],
+            label = string(m),
+            lw = 2,
+            marker = :circle,
+            markersize = 5,
+            markerstrokewidth = 1,
+        )
     end
 
     p_mem = plot(
@@ -225,7 +234,16 @@ function make_plots(res::BenchmarkResults)
     )
 
     for m in res.methods
-        plot!(p_mem, res.dims, avg_mem[m] ./ 1e6, label = string(m))
+        plot!(
+            p_mem,
+            res.dims,
+            avg_mem[m] ./ 1e6,
+            label = string(m),
+            lw = 2,
+            marker = :circle,
+            markersize = 5,
+            markerstrokewidth = 1,
+        )
     end
 
     return plot(p_time, p_mem, layout = (2, 1), size = (900, 700))
