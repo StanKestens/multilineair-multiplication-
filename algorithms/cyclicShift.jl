@@ -3,7 +3,7 @@ using LinearAlgebra
 using Pkg
 using Strided
 
-include("tensor.jl")
+include("../utility/tensor.jl")
 include("ordering.jl")
 
 """

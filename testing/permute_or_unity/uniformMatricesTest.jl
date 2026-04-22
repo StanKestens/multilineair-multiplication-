@@ -2,7 +2,7 @@ using LinearAlgebra
 using Plots
 using ProgressMeter
 using BenchmarkTools
-include("cyclicShift.jl")
+include("../algorithms/cyclicShift.jl")
 function max_n_for_d(d, max_elems)
     return floor(Int, max_elems^(1 / d))
 end

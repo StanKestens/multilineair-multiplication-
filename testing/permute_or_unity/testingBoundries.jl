@@ -5,10 +5,10 @@ using Plots
 using Combinatorics
 using ProgressMeter
 
-include("tensor.jl")
-include("ordering.jl")
-include("naive.jl")
-include("cyclicShift.jl")
+include("../utility/tensor.jl")
+include("../algorithms/ordering.jl")
+include("../algorithms/naive.jl")
+include("../algorithms/cyclicShift.jl")
 
 function benchmark_cyclic(d, g; trials=1)
     min_grootte_tensor = 2

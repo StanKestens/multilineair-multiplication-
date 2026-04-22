@@ -4,8 +4,8 @@ using ProgressMeter
 using Random
 using Printf
 
-include("cyclicShift.jl")
-include("ordering.jl") # Assuming OptimalOrdering is here
+include("../algorithms/cyclicShift.jl")
+include("../algorithms/ordering.jl") # Assuming OptimalOrdering is here
 
 # -----------------------------------------------------------------------
 # Helper: Find dimension size `n` for a target memory footprint

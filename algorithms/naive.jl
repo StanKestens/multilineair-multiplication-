@@ -1,7 +1,7 @@
 using TensorToolbox
 using LinearAlgebra
 
-include("tensor.jl")
+include("../utility/tensor.jl")
 
 """
 Input: X is a tensor

@@ -3,9 +3,9 @@ using Random
 using Plots
 using Measures  # nodig voor mm
 
-include("tensor.jl")
-include("ordering.jl")
-include("naive.jl")
+include("../utility/tensor.jl")
+include("../algorithms/ordering.jl")
+include("../algorithms/naive.jl")
 
 # -----------------------------
 # Generate all permutations

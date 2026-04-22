@@ -5,9 +5,9 @@ using Statistics
 using Printf
 using LinearAlgebra
 
-include("tensor.jl")
-include("ordering.jl")
-include("constantMemoryTest.jl")
+include("../utility/tensor.jl")
+include("../algorithms/ordering.jl")
+include("../algorithms/constantMemoryTest.jl")
 
 # ============================================================
 # 1. Data structs

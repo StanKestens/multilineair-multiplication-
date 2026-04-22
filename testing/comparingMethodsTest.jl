@@ -6,13 +6,13 @@ using Statistics
 using Printf
 using LinearAlgebra
 
-include("naive.jl")                  # NaiveMultiplication(X, A, order)
-include("orderingMultiplication.jl") # NonNaiveMultiplication(X, A, order)
-include("cyclicShift.jl")            # CyclicShiftMultiplication(X, A, order)
-include("tensor.jl")
-include("ordering.jl")
-include("bruteforce.jl")             # bruteforce(X, A)
-include("constantMemoryTest.jl")    # constant_memory_shape(d; N, order)
+include("../algorithms/naive.jl")                  # NaiveMultiplication(X, A, order)
+include("../algorithms/orderingMultiplication.jl") # NonNaiveMultiplication(X, A, order)
+include("../algorithms/cyclicShift.jl")            # CyclicShiftMultiplication(X, A, order)
+include("../utility/tensor.jl")
+include("../algorithms/ordering.jl")
+include("../algorithms/bruteforce.jl")             # bruteforce(X, A)
+include("../algorithms/constantMemoryTest.jl")    # constant_memory_shape(d; N, order)
 
 # ============================================================
 # 1. Methoden definiëren

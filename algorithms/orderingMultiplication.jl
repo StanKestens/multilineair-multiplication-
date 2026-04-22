@@ -1,7 +1,7 @@
 using TensorToolbox
 using LinearAlgebra
 include("ordering.jl")
-include("tensor.jl")
+include("../utility/tensor.jl")
 """
 Input: X is a tensor
     A contains the matrices to multiply with
@@ -22,19 +22,4 @@ function NonNaiveMultiplication(X::AbstractArray, A::Vector{<:AbstractMatrix})
         sz = size(X)
     end
     return X
-end
-
-#Test
-X = rand(3, 4, 5)
-A = MatrixCell([
-    rand(5, 3),   # for mode 1
-    rand(4, 4),   # for mode 2
-    rand(3, 5)    # for mode 3
-])
-
-Y = NonNaiveMultiplication(X, A);
-println(size(Y))  # Expected output: (2, 2, 2, 2)
-
-function fold()
-
-end
+end# Expected output: (5, 4, 3)
