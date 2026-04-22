@@ -22,7 +22,7 @@ const METHODS = Dict{Symbol,Function}(
     :Naïve       => NaiveMultiplication,
     :Ordered     => (X, A, P) -> NonNaiveMultiplication(X, A),
     :CyclicShift => CyclicShiftMultiplication,
-   # :Bruteforce  => (X, A, P) -> bruteforce(X, A),
+    #:Bruteforce  => (X, A, P) -> bruteforce(X, A),
 )
 
 # ============================================================
@@ -56,7 +56,7 @@ end
 # 2b. Constant-memory shapes
 # ============================================================
 
-const CONSTANT_N = 12500000 # = 2^5 * 5^7
+const CONSTANT_N = 1250000 # = 2^5 * 5^7
 
 
 

@@ -123,7 +123,7 @@ const METHODS = Dict{Symbol,Function}(
 # 5. Case generation
 # ============================================================
 
-const CONSTANT_N = 2^4*5^9 # = 
+const CONSTANT_N = 2^4 * 5^9 # = 
 
 function make_case_constantMemory(order::Symbol, d::Int; N::Int = CONSTANT_N)
     dims = collect(factor_based_shape(N, d))
@@ -137,7 +137,7 @@ function make_case_constantMemory(order::Symbol, d::Int; N::Int = CONSTANT_N)
     @printf("d = %d | dims = %s | X = %.2f MB\n",
             d, string(Tuple(dims)), sizeof(X) / 1e6)
 
-    A = [randn(sizes[i], dims[i]) for i in 1:d]
+    A = [randn(sizes[(i)], dims[i]) for i in 1:d]
     return X, A
 end
 
@@ -163,7 +163,7 @@ end
 function benchmark_case(order_sym::Symbol, n::Int, d::Int;
                         methods = METHODS,
                         constant_memory::Bool = false,
-                        nreps::Int = 7)
+                        nreps::Int = 5)
 
     X, A = constant_memory ? make_case_constantMemory(order_sym, d) : make_case(order_sym, n, d)
     P = collect(1:d)
@@ -198,7 +198,7 @@ end
 function run_experiments(n::Int, dims::AbstractVector{<:Int};
                          methods = METHODS,
                          constant_memory::Bool = false,
-                         nreps::Int = 7)
+                         nreps::Int = 5)
 
     method_keys = collect(keys(methods))
     stats = Dict(m => SplitTimes[] for m in method_keys)
@@ -264,36 +264,34 @@ function make_plot(res::BenchmarkResults)
     )
 
     for (mi, m) in enumerate(methods)
-        xs = collect(1:nd) .+ (mi - (nm + 1) / 2) * bar_w
-        totals = reor[mi, :] .+ comp[mi, :]
+    xs = collect(1:nd) .+ (mi - (nm + 1) / 2) * bar_w
+    totals = reor[mi, :] .+ comp[mi, :]
 
-        # onderste segment
-        bar!(p, xs, reor[mi, :];
-             bar_width = bar_w * 0.9,
-             fillcolor = :blue,
-             linecolor = :black,
-             linewidth = 1,
-             label = mi == 1 ? "Memory movement" : "")
+    # Draw the FULL bar first (this becomes the top/arithmetic segment visually)
+    bar!(p, xs, totals;
+         bar_width = bar_w * 0.9,
+         fillcolor = COL_COMP,
+         linecolor = :black,
+         linewidth = 1,
+         label = mi == 1 ? "Arithmetic" : "")
 
-        # middelste segment
-        bar!(p, xs, comp[mi, :];
-             bar_width = bar_w * 0.9,
-             fillcolor = COL_COMP,
-             linecolor = :black,
-             linewidth = 1,
-             bottom = reor[mi, :],
-             label = mi == 1 ? "Arithmetic" : "")
+    # Draw the reorg bar on top of it — it covers the bottom part of the total,
+    # so the visible stack is: memory movement (bottom) + arithmetic (top)
+    bar!(p, xs, reor[mi, :];
+         bar_width = bar_w * 0.9,
+         fillcolor = :blue,
+         linecolor = :black,
+         linewidth = 1,
+         label = mi == 1 ? "Memory movement" : "")
 
-
-        # marker boven elke volledige bar zodat het algoritme visueel herkenbaar is
-        scatter!(p, xs, totals .+ 0.02 .* maximum(totals);
-                 marker = method_markers[m],
-                 markersize = 7,
-                 markerstrokecolor = :black,
-                 markercolor = :white,
-                 label = method_labels[m])
-    end
-
+    # Marker sits right at the top of the stacked bar
+    scatter!(p, xs, totals;
+             marker = method_markers[m],
+             markersize = 7,
+             markerstrokecolor = :black,
+             markercolor = :white,
+             label = method_labels[m])
+end
     return p
 end
 
@@ -302,10 +300,10 @@ end
 # ============================================================
 
 function main(; n::Int = 2,
-               dims = 3:12,
+               dims = 3:13,
                seed::Int = 1234,
                constant_memory::Bool = false,
-               nreps::Int = 7,
+               nreps::Int = 5,
                savepath::String = "split_timing.png")
     Random.seed!(seed)
 
