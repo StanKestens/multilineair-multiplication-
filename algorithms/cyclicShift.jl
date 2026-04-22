@@ -23,31 +23,22 @@ Output : X, the same tensor multiplied by each each matrix in A
 function CyclicShiftMultiplication(X::AbstractArray, A::Vector{<:AbstractMatrix})
     m = length(A)
     dims = collect(size(X))
+    r = size.(A, 1)
+
     X = reshape(X, dims[1], :)
-    R = size.(A, 1)
-    R = insert!(R, 1, 1)
-    a = 1
+
     for i in 1:m
-        a = R[i] * a
         X = transpose(X) * transpose(A[i])
-        X = reshape(X, div(size(X)[1], (prod(dims[i+2:length(dims)]) * a)), :)
+        next = i < length(dims) ? dims[i+1] : 1
+        X = reshape(X, next, :)
     end
-    R = deleteat!(R, 1)
 
-    remaining_dims = dims[m+1:end]
-
-    if isempty(remaining_dims)
-        # m == ndims: loop already produced the right memory order
-        X = reshape(X, R...)
+    if m == length(dims)
+        return reshape(X, r...)
     else
-        # Memory is (D_rem, r_total) — a plain 2D transpose fixes the order
-        D_rem = prod(remaining_dims)
-        r_total = prod(R)
-        X = reshape(X, D_rem, r_total)   # ensure exactly 2D
-        X = Matrix(transpose(X))         # (r_total, D_rem) — materialize
-        X = reshape(X, vcat(R, remaining_dims)...)
+        X = Matrix(transpose(reshape(X, prod(dims[m+1:end]), prod(r))))
+        return reshape(X, vcat(r, dims[m+1:end])...)
     end
-    return X
 end
 
 """
