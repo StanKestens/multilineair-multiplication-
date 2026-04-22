@@ -32,7 +32,7 @@ end
 function benchmark_permutations(perms, X, A)
     times_ms = Float64[]
     for P in perms
-        t = @benchmark NaiveMultiplication($X, $A, $P) samples = 10 evals = 1
+        t = @benchmark NaiveMultiplication($X, $A, $P) samples = 5 evals = 1
         push!(times_ms, median(t.times) / 1e6)
     end
     return times_ms
@@ -60,13 +60,13 @@ end
 # -----------------------------
 # Main (4D case)
 # -----------------------------
-X = rand(10, 20, 30, 40)
+X = rand(50,50,50,50)
 
 A = Vector{AbstractMatrix}(undef, 4)
-A[1] = randn(30, 10)
-A[2] = randn(60, 20)
-A[3] = randn(90, 30)
-A[4] = randn(1, 40)
+A[1] = randn(200, 50)
+A[2] = randn(150, 50)
+A[3] = randn(100, 50)
+A[4] = randn(1,  50)
 
 heuristic = OptimalOrdering(X, A)
 println("Heuristic optimal order: ", heuristic)

@@ -27,3 +27,13 @@ function factor_based_shape(N::Int, d::Int)
 
     return Tuple(sort(dims, rev=true))
 end
+
+function splitequaldims(n, d)
+    factors = Int[]
+    push!(factors, floor(Int, n^(1/d)))
+    for i in 2:d
+        remaining = n / prod(factors)
+        push!(factors, floor(Int, remaining^(1/(d-i+1))))
+    end
+    return factors
+end
