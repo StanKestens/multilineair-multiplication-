@@ -12,7 +12,7 @@ include("../algorithms/cyclicShift.jl")            # CyclicShiftMultiplication(X
 include("../utility/tensor.jl")
 include("../algorithms/ordering.jl")
 include("../algorithms/bruteforce.jl")             # bruteforce(X, A)
-include("../algorithms/constantMemoryTest.jl")    # constant_memory_shape(d; N, order)
+include("../testing/constantMemoryTest.jl")    # constant_memory_shape(d; N, order)
 
 # ============================================================
 # 1. Methoden definiëren
@@ -21,7 +21,7 @@ include("../algorithms/constantMemoryTest.jl")    # constant_memory_shape(d; N, 
 const METHODS = Dict{Symbol,Function}(
     :Naïve       => NaiveMultiplication,
     :Ordered     => (X, A, P) -> NonNaiveMultiplication(X, A),
-    :CyclicShift => CyclicShiftMultiplication,
+    :CyclicShift => (X, A, P) -> multiply_with_permutation(X, A, P),
     #:Bruteforce  => (X, A, P) -> bruteforce(X, A),
 )
 
@@ -149,7 +149,7 @@ end
 # ============================================================
 
 function run_experiments(n::Int, dims::AbstractVector{<:Int}; methods = METHODS, constant_memory::Bool = false)
-    orders = [:normal]
+    orders = [:shuffle]
 
     times  = Dict(m => Dict(o => Float64[] for o in orders) for m in keys(methods))
     mems   = Dict(m => Dict(o => Float64[] for o in orders) for m in keys(methods))
@@ -253,7 +253,7 @@ end
 # 7. main
 # ============================================================
 
-function main(; n::Int = 2, dims = 3:10, seed::Int = 1234, methods = METHODS, constant_memory::Bool = false)
+function main(; n::Int = 2, dims = 3:9, seed::Int = 1234, methods = METHODS, constant_memory::Bool = false)
     Random.seed!(seed)
     res = run_experiments(n, collect(dims); methods = methods, constant_memory = constant_memory)
     fig = make_plots(res)
@@ -265,4 +265,4 @@ end
 # main()
 
 # Constant-memory experiment
-main(constant_memory = true)
+main(constant_memory = false)

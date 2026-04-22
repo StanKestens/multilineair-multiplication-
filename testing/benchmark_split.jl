@@ -7,7 +7,7 @@ using LinearAlgebra
 
 include("../utility/tensor.jl")
 include("../algorithms/ordering.jl")
-include("../algorithms/constantMemoryTest.jl")
+include("../testing/constantMemoryTest.jl")
 
 # ============================================================
 # 1. Data structs
@@ -34,6 +34,54 @@ OptimalOrdering(X, A) = sortperm([1 / size(X, k) - 1 / size(A[k], 1) for k in ea
 # ============================================================
 # 3. Timed methods
 # ============================================================
+function multiply_with_permutation_timed(
+    X::AbstractArray,
+    A::Vector{<:AbstractMatrix},
+    active::Vector{Int},
+)
+    t_plan = 0.0
+    t_comp = 0.0
+    t_reorg = 0.0
+
+    d = ndims(X)
+
+    tp0 = time_ns()
+    gap_positions = setdiff(collect(1:d), active)
+    order = OptimalOrdering(X, A)
+    active_ordered = active[order]
+    A_ordered = A[order]
+    P = vcat(active_ordered, gap_positions)
+    tp1 = time_ns()
+    t_plan += (tp1 - tp0) / 1e6
+
+    if P == collect(1:d)
+        Y, s = CyclicShiftMultiplication_timed(X, A_ordered, active_ordered)
+        return Y, SplitTimes(
+            t_plan + s.planning_ms,
+            s.compute_ms,
+            t_reorg + s.reorg_ms,
+        )
+    end
+
+    tr0 = time_ns()
+    Pinv = invperm(P)
+    X_perm = permutedims(X, P)
+    tr1 = time_ns()
+    t_reorg += (tr1 - tr0) / 1e6
+
+    Y, s = CyclicShiftMultiplication_timed(X_perm, A_ordered, active_ordered)
+
+    tr2 = time_ns()
+    Y = permutedims(Y, Pinv)
+    tr3 = time_ns()
+    t_reorg += (tr3 - tr2) / 1e6
+
+    return Y, SplitTimes(
+        t_plan + s.planning_ms,
+        s.compute_ms,
+        t_reorg + s.reorg_ms,
+    )
+end
 
 function NaiveMultiplication_timed(X::AbstractArray, A::Vector{<:AbstractMatrix}, order::Vector{Int})
     t_plan = 0.0
@@ -125,6 +173,29 @@ const METHODS = Dict{Symbol,Function}(
 
 const CONSTANT_N = 2^4 * 5^9 # = 
 
+function make_case(order::Symbol, n::Int, d::Int)
+    X = randn(ntuple(_ -> n, d))
+
+    idx = collect(1:d)
+    sizes = if order === :normal
+        idx .* n
+    elseif order === :shuffle
+        shuffle(idx) .* n
+    elseif order === :reverse
+        reverse(idx) .* n
+    else
+        error("Onbekende order: $order")
+    end
+
+    @printf(
+        "d = %d | order = %s | sizes = %s\n",
+        d, String(order), string(sizes)
+    )
+
+    A = MatrixCell([randn(s, n) for s in sizes])
+    return X, A
+end
+
 function make_case_constantMemory(order::Symbol, d::Int; N::Int = CONSTANT_N)
     dims = collect(factor_based_shape(N, d))
     X = randn(dims...)
@@ -141,20 +212,6 @@ function make_case_constantMemory(order::Symbol, d::Int; N::Int = CONSTANT_N)
     return X, A
 end
 
-function make_case(order::Symbol, n::Int, d::Int)
-    X = randn(ntuple(_ -> n, d))
-    idx = collect(1:d)
-
-    sizes = order === :normal  ? idx .* n :
-            order === :shuffle ? shuffle(idx) .* n :
-            order === :reverse ? reverse(idx) .* n :
-            error("Unknown order: $order")
-
-    @printf("d = %d | sizes = %s\n", d, string(sizes))
-
-    A = [randn(s, n) for s in sizes]
-    return X, A
-end
 
 # ============================================================
 # 6. Benchmark
@@ -205,7 +262,7 @@ function run_experiments(n::Int, dims::AbstractVector{<:Int};
 
     for d in dims
         println("===== d = $d =====")
-        case_results = benchmark_case(:normal, n, d;
+        case_results = benchmark_case(:shuffle, n, d;
                                       methods=methods,
                                       constant_memory=constant_memory,
                                       nreps=nreps)
@@ -227,30 +284,16 @@ const COL_REOR = RGB(0.53, 0.53, 0.50)
 function make_plot(res::BenchmarkResults)
     methods = METHOD_ORDER
     dims = res.dims
-    nd = length(dims)
-    nm = length(methods)
-
-    comp = zeros(nm, nd)
-    reor = zeros(nm, nd)
-
-    for (mi, m) in enumerate(methods), di in 1:nd
-        s = res.stats[m][di]
-        comp[mi, di] = s.compute_ms
-        reor[mi, di] = s.reorg_ms
-    end
-
-    bar_w = 0.75 / nm
 
     p = plot(
-        xlabel = "Tensororde d",
-        ylabel = "Mediane tijd (ms)",
-        title = "Multilineaire vermenigvuldiging — timing per fase",
+        xlabel = "Tensor Order (d)",
+        ylabel = "Median Time (ms)",
+        title  = "Multilinear Multiplication: Average Time",
         legend = :topleft,
-        size = (800, 500),
-        xticks = (1:nd, string.(dims)),
+        yscale = :log10,
+        size = (900, 500),
     )
 
-    # vaste visuele markering per algoritme
     method_markers = Dict(
         :Naïve       => :circle,
         :Ordered     => :square,
@@ -263,35 +306,26 @@ function make_plot(res::BenchmarkResults)
         :CyclicShift => "Cyclic Shift",
     )
 
-    for (mi, m) in enumerate(methods)
-    xs = collect(1:nd) .+ (mi - (nm + 1) / 2) * bar_w
-    totals = reor[mi, :] .+ comp[mi, :]
+    for m in methods
+        total_times = [
+            res.stats[m][i].planning_ms +
+            res.stats[m][i].compute_ms +
+            res.stats[m][i].reorg_ms
+            for i in eachindex(dims)
+        ]
 
-    # Draw the FULL bar first (this becomes the top/arithmetic segment visually)
-    bar!(p, xs, totals;
-         bar_width = bar_w * 0.9,
-         fillcolor = COL_COMP,
-         linecolor = :black,
-         linewidth = 1,
-         label = mi == 1 ? "Arithmetic" : "")
+        plot!(
+            p,
+            dims,
+            total_times,
+            label = method_labels[m],
+            lw = 2,
+            marker = method_markers[m],
+            markersize = 5,
+            markerstrokewidth = 1,
+        )
+    end
 
-    # Draw the reorg bar on top of it — it covers the bottom part of the total,
-    # so the visible stack is: memory movement (bottom) + arithmetic (top)
-    bar!(p, xs, reor[mi, :];
-         bar_width = bar_w * 0.9,
-         fillcolor = :blue,
-         linecolor = :black,
-         linewidth = 1,
-         label = mi == 1 ? "Memory movement" : "")
-
-    # Marker sits right at the top of the stacked bar
-    scatter!(p, xs, totals;
-             marker = method_markers[m],
-             markersize = 7,
-             markerstrokecolor = :black,
-             markercolor = :white,
-             label = method_labels[m])
-end
     return p
 end
 
@@ -300,7 +334,7 @@ end
 # ============================================================
 
 function main(; n::Int = 2,
-               dims = 3:13,
+               dims = 3:9,
                seed::Int = 1234,
                constant_memory::Bool = false,
                nreps::Int = 5,
@@ -319,4 +353,4 @@ function main(; n::Int = 2,
     return res
 end
 
-main(constant_memory=true)
+main(constant_memory=false)
