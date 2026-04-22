@@ -1,29 +1,98 @@
-using BenchmarkTools
-using Random
-using Plots
-using Test
+using Test, Random
+using TensorToolbox
+using Strided
 
-include("../utility/tensor.jl")
-include("../algorithms/ordering.jl")
-include("../algorithms/naive.jl")
 include("../algorithms/cyclicShift.jl")
-include("../algorithms/bruteforce.jl")
 include("../algorithms/orderingMultiplication.jl")
 
-X = rand(5, 6, 7)
+# ── Reference via TensorToolbox ───────────────────────────────────────────────
+function ttm_reference(X::AbstractArray, A::Vector{<:AbstractMatrix})
+    result = X
+    for (i, Ai) in enumerate(A)
+        result = ttm(result, Ai, i)
+    end
+    return result
+end
 
-A = [
-    randn(2, 5),
-    randn(3, 6),
-    randn(4, 7)
-]
+Random.seed!(42)
 
-Y = CyclicShiftMultiplication(X, A)
+@testset "Cyclic shift strategies vs TensorToolbox.ttm" begin
 
-Z = bruteforce(X, A)
-B = NaiveMultiplication(X, A, [1, 2, 3])
-C = NonNaiveMultiplication(X, A)
-@test Y ≈ Z
-@test Y ≈ B
-@test Y ≈ C
+    @testset "m == ndims == 2" begin
+        X = randn(3, 4)
+        A = [randn(5, 3), randn(6, 4)]
+        active = [1, 2]
 
+        ref = ttm_reference(X, A)
+
+        @test multiply_with_unity_fill(X, A, active) ≈ ref
+        @test multiply_with_permutation(X, A, active) ≈ ref
+    end
+
+    @testset "m == ndims == 3" begin
+        X = randn(3, 4, 5)
+        A = [randn(6, 3), randn(7, 4), randn(8, 5)]
+        active = [1, 2, 3]
+
+        ref = ttm_reference(X, A)
+
+        @test multiply_with_unity_fill(X, A, active) ≈ ref
+        @test multiply_with_permutation(X, A, active) ≈ ref
+    end
+
+    @testset "m=1 < ndims=2" begin
+        X = randn(3, 4)
+        A = [randn(5, 3)]
+        active = [1]
+
+        ref = ttm_reference(X, A)
+
+        @test multiply_with_unity_fill(X, A, active) ≈ ref
+        @test multiply_with_permutation(X, A, active) ≈ ref
+    end
+
+    @testset "m=1 < ndims=3" begin
+        X = randn(3, 4, 5)
+        A = [randn(6, 3)]
+        active = [1]
+
+        ref = ttm_reference(X, A)
+
+        @test multiply_with_unity_fill(X, A, active) ≈ ref
+        @test multiply_with_permutation(X, A, active) ≈ ref
+    end
+
+    @testset "m=2 < ndims=3" begin
+        X = randn(3, 4, 5)
+        A = [randn(6, 3), randn(7, 4)]
+        active = [1, 2]
+
+        ref = ttm_reference(X, A)
+
+        @test multiply_with_unity_fill(X, A, active) ≈ ref
+        @test multiply_with_permutation(X, A, active) ≈ ref
+    end
+
+    @testset "m=1 < ndims=4" begin
+        X = randn(3, 4, 5, 6)
+        A = [randn(7, 3)]
+        active = [1]
+
+        ref = ttm_reference(X, A)
+
+        @test multiply_with_unity_fill(X, A, active) ≈ ref
+        @test multiply_with_permutation(X, A, active) ≈ ref
+    end
+
+    @testset "m=3 < ndims=4" begin
+        X = randn(3, 4, 5, 6)
+        A = [randn(7, 3), randn(8, 4), randn(9, 5)]
+        active = [1, 2, 3]
+
+        ref = ttm_reference(X, A)
+
+        @test multiply_with_unity_fill(X, A, active) ≈ ref
+        @test multiply_with_permutation(X, A, active) ≈ ref
+    end
+
+end
